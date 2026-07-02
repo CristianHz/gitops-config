@@ -20,6 +20,6 @@ spec:
         - name: acr-pull-secret
       containers:
         - name: react-skeleton
-          image: acrargocdtest.azurecr.io/react-skeleton:latest
+          image: acrargocdtest.azurecr.io/react-skeleton:sha-b61066f
           ports:
             - containerPort: 80
