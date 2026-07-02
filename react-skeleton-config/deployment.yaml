@@ -1,0 +1,23 @@
+# deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-skeleton
+  labels:
+    app: react-skeleton
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: react-skeleton
+  template:
+    metadata:
+      labels:
+        app: react-skeleton
+    spec:
+      containers:
+        - name: react-skeleton
+          image: react-skeleton:latest
+          ports:
+            - containerPort: 80
