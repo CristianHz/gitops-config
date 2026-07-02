@@ -16,8 +16,10 @@ spec:
       labels:
         app: react-skeleton
     spec:
+      imagePullSecrets:
+        - name: acr-pull-secret
       containers:
         - name: react-skeleton
-          image: react-skeleton:latest
+          image: acrargocdtest.azurecr.io/react-skeleton:latest
           ports:
             - containerPort: 80
