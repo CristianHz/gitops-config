@@ -6,7 +6,13 @@ metadata:
 spec:
   generators:
     - list:
-        elements: []
+        elements:
+          - team: team-research
+            app: react-skeleton
+            env: dev
+          - team: team-research
+            app: react-skeleton
+            env: staging
   template:
     metadata:
       name: '{{team}}-{{app}}-{{env}}'
@@ -23,6 +29,8 @@ spec:
         automated:
           prune: true
           selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
 
 # To activate, replace elements: [] with entries like:
 # elements:
