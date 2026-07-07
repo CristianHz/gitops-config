@@ -339,36 +339,38 @@ jobs:
           python - <<'PY'
           import os
 
-          content = f"""apiVersion: platform/v1
-kind: FoundryInstanceStatus
-metadata:
-  name: {os.environ['REQUEST_NAME']}
-spec:
-  requestFile: {os.environ['REQUEST_FILE']}
-  team: {os.environ['TEAM']}
-  environment: {os.environ['ENVIRONMENT']}
-  template:
-    repo: {os.environ['TEMPLATE_REPO']}
-    path: {os.environ['TEMPLATE_PATH']}
-    version: {os.environ['TEMPLATE_VERSION']}
-  azure:
-    subscriptionId: {os.environ['SUBSCRIPTION_ID']}
-    location: {os.environ['LOCATION']}
-    resourceGroupName: {os.environ['RESOURCE_GROUP_NAME']}
-  parameters:
-    baseName: {os.environ['BASE_NAME']}
-    telemetryOptOut: {os.environ['TELEMETRY_OPTOUT']}
-status:
-  state: {os.environ['RESULT']}
-  updatedAt: {os.environ['UTC_NOW']}
-  runId: \"{os.environ['RUN_ID']}\"
-  runUrl: {os.environ['RUN_URL']}
-  outputs:
-    foundryName: {os.environ['FOUNDRY_NAME']}
-    foundryProjectName: {os.environ['FOUNDRY_PROJECT_NAME']}
-    webAppName: {os.environ['WEBAPP_NAME']}
-    webAppUrl: {os.environ['WEBAPP_URL']}
-"""
+          lines = [
+            "apiVersion: platform/v1",
+            "kind: FoundryInstanceStatus",
+            "metadata:",
+            f"  name: {os.environ['REQUEST_NAME']}",
+            "spec:",
+            f"  requestFile: {os.environ['REQUEST_FILE']}",
+            f"  team: {os.environ['TEAM']}",
+            f"  environment: {os.environ['ENVIRONMENT']}",
+            "  template:",
+            f"    repo: {os.environ['TEMPLATE_REPO']}",
+            f"    path: {os.environ['TEMPLATE_PATH']}",
+            f"    version: {os.environ['TEMPLATE_VERSION']}",
+            "  azure:",
+            f"    subscriptionId: {os.environ['SUBSCRIPTION_ID']}",
+            f"    location: {os.environ['LOCATION']}",
+            f"    resourceGroupName: {os.environ['RESOURCE_GROUP_NAME']}",
+            "  parameters:",
+            f"    baseName: {os.environ['BASE_NAME']}",
+            f"    telemetryOptOut: {os.environ['TELEMETRY_OPTOUT']}",
+            "status:",
+            f"  state: {os.environ['RESULT']}",
+            f"  updatedAt: {os.environ['UTC_NOW']}",
+            f"  runId: \"{os.environ['RUN_ID']}\"",
+            f"  runUrl: {os.environ['RUN_URL']}",
+            "  outputs:",
+            f"    foundryName: {os.environ['FOUNDRY_NAME']}",
+            f"    foundryProjectName: {os.environ['FOUNDRY_PROJECT_NAME']}",
+            f"    webAppName: {os.environ['WEBAPP_NAME']}",
+            f"    webAppUrl: {os.environ['WEBAPP_URL']}",
+          ]
+          content = "\n".join(lines) + "\n"
 
           with open(os.environ["STATUS_FILE"], "w", encoding="utf-8") as f:
             f.write(content)
