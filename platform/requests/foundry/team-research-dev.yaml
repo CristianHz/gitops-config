@@ -1,0 +1,23 @@
+apiVersion: platform/v1
+kind: FoundryInstanceRequest
+metadata:
+  name: team-research-dev
+spec:
+  template:
+    repo: CristianHz/app-stacks
+    path: templates/microsoft-foundry-basic
+    version: v1.0.0
+  azure:
+    subscriptionId: 5a6786f1-b079-405d-b9cf-18cf898c60cb
+    location: eastus2
+    resourceGroupName: rg-chat-basic-cris01
+  params:
+    baseName: cris01
+    yourPrincipalId: d599d8ab-ea9c-4efd-9d90-7174e20f3af8
+    telemetryOptOut: false
+  ownership:
+    team: team-research
+    requestor: cristian.hernandez@possumus.tech
+    approver: cristian.hernandez@possumus.tech
+    costCenter: CC-1234
+    dataClassification: Internal
