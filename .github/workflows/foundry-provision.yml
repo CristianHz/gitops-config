@@ -48,6 +48,13 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             FILE="${{ github.event.inputs.request_file }}"
+
+            # If a manual run provides an example file (or empty input), fallback to a real request file.
+            if [ -z "$FILE" ] || echo "$FILE" | grep -q '\.example\.yaml$'; then
+              FILE=$(git ls-files 'platform/requests/foundry/*.yaml' \
+                | grep -v '\.example\.yaml$' \
+                | head -n 1 || true)
+            fi
           else
             FILE=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
               | grep '^platform/requests/foundry/.*\.yaml$' \
