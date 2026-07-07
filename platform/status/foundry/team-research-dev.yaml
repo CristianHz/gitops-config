@@ -1,0 +1,29 @@
+apiVersion: platform/v1
+kind: FoundryInstanceStatus
+metadata:
+  name: team-research-dev
+spec:
+  requestFile: platform/requests/foundry/team-research-dev.yaml
+  team: team-research
+  environment: dev
+  template:
+    repo: CristianHz/app-stacks
+    path: templates/microsoft-foundry-basic
+    version: v1.0.0
+  azure:
+    subscriptionId: 5a6786f1-b079-405d-b9cf-18cf898c60cb
+    location: eastus2
+    resourceGroupName: rg-chat-basic-cris01
+  parameters:
+    baseName: cris01
+    telemetryOptOut: false
+status:
+  state: failure
+  updatedAt: 2026-07-07T20:34:17Z
+  runId: "28896782467"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28896782467
+  outputs:
+    foundryName: 
+    foundryProjectName: 
+    webAppName: 
+    webAppUrl: 
