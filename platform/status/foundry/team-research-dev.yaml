@@ -19,9 +19,9 @@ spec:
     telemetryOptOut: false
 status:
   state: failure
-  updatedAt: 2026-07-07T20:34:17Z
-  runId: "28896782467"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28896782467
+  updatedAt: 2026-07-07T20:38:51Z
+  runId: "28897031373"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28897031373
   outputs:
     foundryName: 
     foundryProjectName: 
