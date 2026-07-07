@@ -1,0 +1,19 @@
+apiVersion: platform/v1
+kind: FoundryRequestPolicy
+spec:
+  allowedTemplateRepo: CristianHz/app-stacks
+  allowedTemplatePath: templates/microsoft-foundry-basic
+  allowedTeams:
+    - team-research
+  allowedEnvironments:
+    - dev
+    - staging
+  allowedLocations:
+    - eastus2
+  allowedDataClassifications:
+    - Public
+    - Internal
+    - Confidential
+    - Restricted
+  requireApprover: true
+  requireCostCenter: true

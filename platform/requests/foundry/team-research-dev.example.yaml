@@ -1,0 +1,23 @@
+apiVersion: platform/v1
+kind: FoundryInstanceRequest
+metadata:
+  name: team-research-dev
+spec:
+  template:
+    repo: CristianHz/app-stacks
+    path: templates/microsoft-foundry-basic
+    version: v1.0.0
+  azure:
+    subscriptionId: 00000000-0000-0000-0000-000000000000
+    location: eastus2
+    resourceGroupName: rg-chat-basic-abc123
+  params:
+    baseName: abc123
+    yourPrincipalId: 11111111-1111-1111-1111-111111111111
+    telemetryOptOut: false
+  ownership:
+    team: team-research
+    requestor: dev1@contoso.com
+    approver: platform-owner@contoso.com
+    costCenter: CC-1234
+    dataClassification: Internal

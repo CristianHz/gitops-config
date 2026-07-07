@@ -1,0 +1,364 @@
+name: foundry-provision
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "platform/requests/foundry/*.yaml"
+  workflow_dispatch:
+    inputs:
+      request_file:
+        description: "Path to request file in gitops-config"
+        required: true
+        default: "platform/requests/foundry/team-research-dev.example.yaml"
+
+env:
+  APP_STACKS_REPO: CristianHz/app-stacks
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  resolve-request:
+    runs-on: ubuntu-latest
+    outputs:
+      request_file: ${{ steps.resolve.outputs.request_file }}
+      request_name: ${{ steps.parse.outputs.request_name }}
+      team: ${{ steps.parse.outputs.team }}
+      environment: ${{ steps.parse.outputs.environment }}
+      status_file: ${{ steps.parse.outputs.status_file }}
+      template_repo: ${{ steps.parse.outputs.template_repo }}
+      template_path: ${{ steps.parse.outputs.template_path }}
+      template_version: ${{ steps.parse.outputs.template_version }}
+      subscription_id: ${{ steps.parse.outputs.subscription_id }}
+      location: ${{ steps.parse.outputs.location }}
+      resource_group_name: ${{ steps.parse.outputs.resource_group_name }}
+      base_name: ${{ steps.parse.outputs.base_name }}
+      your_principal_id: ${{ steps.parse.outputs.your_principal_id }}
+      telemetry_opt_out: ${{ steps.parse.outputs.telemetry_opt_out }}
+    steps:
+      - name: Checkout gitops-config
+        uses: actions/checkout@v4
+
+      - name: Resolve request file
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FILE="${{ github.event.inputs.request_file }}"
+          else
+            FILE=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+              | grep '^platform/requests/foundry/.*\.yaml$' \
+              | grep -v '\.example\.yaml$' \
+              | head -n 1)
+          fi
+
+          if [ -z "$FILE" ]; then
+            echo "No eligible Foundry request file detected."
+            exit 1
+          fi
+
+          if [ ! -f "$FILE" ]; then
+            echo "Request file not found: $FILE"
+            exit 1
+          fi
+
+          if echo "$FILE" | grep -q '\.example\.yaml$'; then
+            echo "Example file cannot be provisioned: $FILE"
+            exit 1
+          fi
+
+          echo "request_file=$FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Parse and validate request
+        id: parse
+        shell: bash
+        run: |
+          python -m pip install --quiet pyyaml
+          python - << 'PY'
+          import os
+          import re
+          import yaml
+
+          request_file = os.environ["REQUEST_FILE"]
+          policy_file = "platform/requests/foundry/policy.yaml"
+          with open(request_file, "r", encoding="utf-8") as f:
+            doc = yaml.safe_load(f)
+
+          policy = {}
+          if os.path.exists(policy_file):
+            with open(policy_file, "r", encoding="utf-8") as f:
+              policy_doc = yaml.safe_load(f) or {}
+            policy = (policy_doc.get("spec") or {})
+
+          if not isinstance(doc, dict):
+            raise SystemExit("Request must be a YAML object")
+
+          api_version = doc.get("apiVersion")
+          if api_version != "platform/v1":
+            raise SystemExit(f"Invalid apiVersion: {api_version}")
+
+          kind = doc.get("kind")
+          if kind != "FoundryInstanceRequest":
+            raise SystemExit(f"Invalid kind: {kind}")
+
+          spec = doc.get("spec", {})
+          template = spec.get("template", {})
+          azure = spec.get("azure", {})
+          params = spec.get("params", {})
+          metadata = doc.get("metadata", {})
+          ownership = spec.get("ownership", {})
+
+          request_name = metadata.get("name")
+          template_repo = template.get("repo")
+          template_path = template.get("path")
+          template_version = template.get("version")
+          subscription_id = azure.get("subscriptionId")
+          location = azure.get("location")
+          resource_group_name = azure.get("resourceGroupName")
+          base_name = params.get("baseName")
+          your_principal_id = params.get("yourPrincipalId")
+          telemetry_opt_out = params.get("telemetryOptOut", False)
+          team = ownership.get("team")
+          requestor = ownership.get("requestor")
+          approver = ownership.get("approver")
+          cost_center = ownership.get("costCenter")
+          data_classification = ownership.get("dataClassification")
+
+          required = {
+            "metadata.name": request_name,
+            "spec.template.repo": template_repo,
+            "spec.template.path": template_path,
+            "spec.template.version": template_version,
+            "spec.azure.subscriptionId": subscription_id,
+            "spec.azure.location": location,
+            "spec.azure.resourceGroupName": resource_group_name,
+            "spec.params.baseName": base_name,
+            "spec.params.yourPrincipalId": your_principal_id,
+            "spec.ownership.team": team,
+            "spec.ownership.requestor": requestor,
+            "spec.ownership.dataClassification": data_classification,
+          }
+          for key, value in required.items():
+            if value is None or str(value).strip() == "":
+              raise SystemExit(f"Missing required field: {key}")
+
+          name_match = re.fullmatch(r"([a-z0-9-]+)-(dev|staging|prod)", str(request_name))
+          if not name_match:
+            raise SystemExit("metadata.name must follow <team>-<env> where env is dev, staging, or prod")
+
+          name_team = name_match.group(1)
+          environment = name_match.group(2)
+          if str(team) != name_team:
+            raise SystemExit("spec.ownership.team must match metadata.name team prefix")
+
+          if not re.fullmatch(r"[a-z0-9]{6,8}", str(base_name)):
+            raise SystemExit("spec.params.baseName must be 6-8 lowercase alphanumeric chars")
+
+          if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", str(your_principal_id)):
+            raise SystemExit("spec.params.yourPrincipalId must be a 36-char Entra object ID")
+
+          if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", str(subscription_id)):
+            raise SystemExit("spec.azure.subscriptionId must be a GUID")
+
+          if not re.fullmatch(r"[a-zA-Z0-9._()/-]{1,90}", str(resource_group_name)):
+            raise SystemExit("spec.azure.resourceGroupName has invalid characters or length")
+
+          if not re.fullmatch(r"v\d+\.\d+\.\d+([-.][A-Za-z0-9.]+)?", str(template_version)):
+            raise SystemExit("spec.template.version must be a version tag like v1.0.0")
+
+          allowed_template_repo = policy.get("allowedTemplateRepo", "CristianHz/app-stacks")
+          allowed_template_path = policy.get("allowedTemplatePath", "templates/microsoft-foundry-basic")
+          allowed_teams = set(policy.get("allowedTeams", ["team-research"]))
+          allowed_envs = set(policy.get("allowedEnvironments", ["dev", "staging"]))
+          allowed_locations = set(policy.get("allowedLocations", ["eastus2"]))
+          allowed_data_classes = set(policy.get("allowedDataClassifications", ["Internal"]))
+          require_approver = bool(policy.get("requireApprover", True))
+          require_cost_center = bool(policy.get("requireCostCenter", True))
+
+          if template_repo != allowed_template_repo:
+            raise SystemExit(f"spec.template.repo must be {allowed_template_repo}")
+
+          if template_path != allowed_template_path:
+            raise SystemExit(f"spec.template.path must be {allowed_template_path}")
+
+          if team not in allowed_teams:
+            raise SystemExit(f"spec.ownership.team is not allowed by policy: {team}")
+
+          if environment not in allowed_envs:
+            raise SystemExit(f"metadata.name environment is not allowed by policy: {environment}")
+
+          if location not in allowed_locations:
+            raise SystemExit(f"spec.azure.location is not allowed by policy: {location}")
+
+          if data_classification not in allowed_data_classes:
+            raise SystemExit(f"spec.ownership.dataClassification is not allowed: {data_classification}")
+
+          if require_approver and (approver is None or str(approver).strip() == ""):
+            raise SystemExit("spec.ownership.approver is required by policy")
+
+          if require_cost_center and (cost_center is None or str(cost_center).strip() == ""):
+            raise SystemExit("spec.ownership.costCenter is required by policy")
+
+          status_file = f"platform/status/foundry/{request_name}.yaml"
+
+          output_path = os.environ["GITHUB_OUTPUT"]
+          out = {
+            "request_name": request_name,
+            "team": team,
+            "environment": environment,
+            "status_file": status_file,
+            "template_repo": template_repo,
+            "template_path": template_path,
+            "template_version": template_version,
+            "subscription_id": subscription_id,
+            "location": location,
+            "resource_group_name": resource_group_name,
+            "base_name": base_name,
+            "your_principal_id": your_principal_id,
+            "telemetry_opt_out": str(telemetry_opt_out).lower(),
+          }
+
+          with open(output_path, "a", encoding="utf-8") as f:
+            for k, v in out.items():
+              f.write(f"{k}={v}\n")
+          PY
+        env:
+          REQUEST_FILE: ${{ steps.resolve.outputs.request_file }}
+
+  provision:
+    runs-on: ubuntu-latest
+    needs: resolve-request
+    outputs:
+      foundry_name: ${{ steps.capture.outputs.foundry_name }}
+      foundry_project_name: ${{ steps.capture.outputs.foundry_project_name }}
+      webapp_name: ${{ steps.capture.outputs.webapp_name }}
+      webapp_url: ${{ steps.capture.outputs.webapp_url }}
+    steps:
+      - name: Checkout gitops-config
+        uses: actions/checkout@v4
+
+      - name: Checkout app-stacks
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.resolve-request.outputs.template_repo }}
+          ref: ${{ needs.resolve-request.outputs.template_version }}
+          path: app-stacks
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ needs.resolve-request.outputs.subscription_id }}
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Provision with azd
+        shell: bash
+        run: |
+          TEMPLATE_DIR="app-stacks/${{ needs.resolve-request.outputs.template_path }}"
+          if [ ! -d "$TEMPLATE_DIR" ]; then
+            echo "Template path does not exist: $TEMPLATE_DIR"
+            exit 1
+          fi
+
+          cd "$TEMPLATE_DIR"
+
+          azd env new "${{ needs.resolve-request.outputs.request_name }}" --no-prompt || true
+          azd env select "${{ needs.resolve-request.outputs.request_name }}"
+          azd env set AZURE_SUBSCRIPTION_ID "${{ needs.resolve-request.outputs.subscription_id }}"
+          azd env set AZURE_LOCATION "${{ needs.resolve-request.outputs.location }}"
+          azd env set AZURE_RESOURCE_GROUP "${{ needs.resolve-request.outputs.resource_group_name }}"
+
+          azd provision --no-prompt \
+            --parameters baseName="${{ needs.resolve-request.outputs.base_name }}" \
+            --parameters yourPrincipalId="${{ needs.resolve-request.outputs.your_principal_id }}" \
+            --parameters telemetryOptOut="${{ needs.resolve-request.outputs.telemetry_opt_out }}"
+
+      - name: Capture deployment outputs
+        id: capture
+        shell: bash
+        run: |
+          FOUNDARY_NAME="aif${{ needs.resolve-request.outputs.base_name }}"
+          WEBAPP_NAME="app-${{ needs.resolve-request.outputs.base_name }}"
+          PROJECT_NAME="projchat"
+
+          HOSTNAME=$(az webapp show \
+            --resource-group "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --name "$WEBAPP_NAME" \
+            --query defaultHostName -o tsv)
+
+          echo "foundry_name=$FOUNDARY_NAME" >> "$GITHUB_OUTPUT"
+          echo "foundry_project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "webapp_name=$WEBAPP_NAME" >> "$GITHUB_OUTPUT"
+          echo "webapp_url=https://$HOSTNAME" >> "$GITHUB_OUTPUT"
+
+  write-status:
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-request
+      - provision
+    if: always() && needs.resolve-request.result == 'success'
+    steps:
+      - name: Checkout gitops-config
+        uses: actions/checkout@v4
+
+      - name: Write status file
+        shell: bash
+        run: |
+          STATUS_FILE="${{ needs.resolve-request.outputs.status_file }}"
+          mkdir -p "$(dirname "$STATUS_FILE")"
+
+          RESULT="${{ needs.provision.result }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          UTC_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          cat > "$STATUS_FILE" <<EOF
+apiVersion: platform/v1
+kind: FoundryInstanceStatus
+metadata:
+  name: ${{ needs.resolve-request.outputs.request_name }}
+spec:
+  requestFile: ${{ needs.resolve-request.outputs.request_file }}
+  team: ${{ needs.resolve-request.outputs.team }}
+  environment: ${{ needs.resolve-request.outputs.environment }}
+  template:
+    repo: ${{ needs.resolve-request.outputs.template_repo }}
+    path: ${{ needs.resolve-request.outputs.template_path }}
+    version: ${{ needs.resolve-request.outputs.template_version }}
+  azure:
+    subscriptionId: ${{ needs.resolve-request.outputs.subscription_id }}
+    location: ${{ needs.resolve-request.outputs.location }}
+    resourceGroupName: ${{ needs.resolve-request.outputs.resource_group_name }}
+  parameters:
+    baseName: ${{ needs.resolve-request.outputs.base_name }}
+    telemetryOptOut: ${{ needs.resolve-request.outputs.telemetry_opt_out }}
+status:
+  state: $RESULT
+  updatedAt: $UTC_NOW
+  runId: "${{ github.run_id }}"
+  runUrl: $RUN_URL
+  outputs:
+    foundryName: ${{ needs.provision.outputs.foundry_name }}
+    foundryProjectName: ${{ needs.provision.outputs.foundry_project_name }}
+    webAppName: ${{ needs.provision.outputs.webapp_name }}
+    webAppUrl: ${{ needs.provision.outputs.webapp_url }}
+EOF
+
+      - name: Commit status update
+        shell: bash
+        run: |
+          STATUS_FILE="${{ needs.resolve-request.outputs.status_file }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$STATUS_FILE"
+          if git diff --cached --quiet; then
+            echo "No status change detected."
+            exit 0
+          fi
+          git commit -m "chore: update foundry status for ${{ needs.resolve-request.outputs.request_name }}"
+          git push origin main
