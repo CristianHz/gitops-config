@@ -9,7 +9,7 @@ spec:
   template:
     repo: CristianHz/app-stacks
     path: templates/microsoft-foundry-basic
-    version: v1.0.1
+    version: v1.0.2
   azure:
     subscriptionId: 5a6786f1-b079-405d-b9cf-18cf898c60cb
     location: eastus2
@@ -18,12 +18,12 @@ spec:
     baseName: cris01
     telemetryOptOut: false
 status:
-  state: failure
-  updatedAt: 2026-07-07T20:50:03Z
-  runId: "28897628986"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28897628986
+  state: success
+  updatedAt: 2026-07-07T20:56:14Z
+  runId: "28897897915"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28897897915
   outputs:
-    foundryName: 
-    foundryProjectName: 
-    webAppName: 
-    webAppUrl: 
+    foundryName: aifcris01
+    foundryProjectName: projchat
+    webAppName: app-cris01
+    webAppUrl: https://app-cris01-hnh2dhfuh6aagvhn.eastus2-01.azurewebsites.net
