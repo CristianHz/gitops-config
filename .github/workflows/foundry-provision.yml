@@ -317,37 +317,62 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           UTC_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          cat > "$STATUS_FILE" <<EOF
-apiVersion: platform/v1
+          export STATUS_FILE RESULT RUN_URL UTC_NOW
+          export REQUEST_NAME="${{ needs.resolve-request.outputs.request_name }}"
+          export REQUEST_FILE="${{ needs.resolve-request.outputs.request_file }}"
+          export TEAM="${{ needs.resolve-request.outputs.team }}"
+          export ENVIRONMENT="${{ needs.resolve-request.outputs.environment }}"
+          export TEMPLATE_REPO="${{ needs.resolve-request.outputs.template_repo }}"
+          export TEMPLATE_PATH="${{ needs.resolve-request.outputs.template_path }}"
+          export TEMPLATE_VERSION="${{ needs.resolve-request.outputs.template_version }}"
+          export SUBSCRIPTION_ID="${{ needs.resolve-request.outputs.subscription_id }}"
+          export LOCATION="${{ needs.resolve-request.outputs.location }}"
+          export RESOURCE_GROUP_NAME="${{ needs.resolve-request.outputs.resource_group_name }}"
+          export BASE_NAME="${{ needs.resolve-request.outputs.base_name }}"
+          export TELEMETRY_OPTOUT="${{ needs.resolve-request.outputs.telemetry_opt_out }}"
+          export RUN_ID="${{ github.run_id }}"
+          export FOUNDRY_NAME="${{ needs.provision.outputs.foundry_name }}"
+          export FOUNDRY_PROJECT_NAME="${{ needs.provision.outputs.foundry_project_name }}"
+          export WEBAPP_NAME="${{ needs.provision.outputs.webapp_name }}"
+          export WEBAPP_URL="${{ needs.provision.outputs.webapp_url }}"
+
+          python - <<'PY'
+          import os
+
+          content = f"""apiVersion: platform/v1
 kind: FoundryInstanceStatus
 metadata:
-  name: ${{ needs.resolve-request.outputs.request_name }}
+  name: {os.environ['REQUEST_NAME']}
 spec:
-  requestFile: ${{ needs.resolve-request.outputs.request_file }}
-  team: ${{ needs.resolve-request.outputs.team }}
-  environment: ${{ needs.resolve-request.outputs.environment }}
+  requestFile: {os.environ['REQUEST_FILE']}
+  team: {os.environ['TEAM']}
+  environment: {os.environ['ENVIRONMENT']}
   template:
-    repo: ${{ needs.resolve-request.outputs.template_repo }}
-    path: ${{ needs.resolve-request.outputs.template_path }}
-    version: ${{ needs.resolve-request.outputs.template_version }}
+    repo: {os.environ['TEMPLATE_REPO']}
+    path: {os.environ['TEMPLATE_PATH']}
+    version: {os.environ['TEMPLATE_VERSION']}
   azure:
-    subscriptionId: ${{ needs.resolve-request.outputs.subscription_id }}
-    location: ${{ needs.resolve-request.outputs.location }}
-    resourceGroupName: ${{ needs.resolve-request.outputs.resource_group_name }}
+    subscriptionId: {os.environ['SUBSCRIPTION_ID']}
+    location: {os.environ['LOCATION']}
+    resourceGroupName: {os.environ['RESOURCE_GROUP_NAME']}
   parameters:
-    baseName: ${{ needs.resolve-request.outputs.base_name }}
-    telemetryOptOut: ${{ needs.resolve-request.outputs.telemetry_opt_out }}
+    baseName: {os.environ['BASE_NAME']}
+    telemetryOptOut: {os.environ['TELEMETRY_OPTOUT']}
 status:
-  state: $RESULT
-  updatedAt: $UTC_NOW
-  runId: "${{ github.run_id }}"
-  runUrl: $RUN_URL
+  state: {os.environ['RESULT']}
+  updatedAt: {os.environ['UTC_NOW']}
+  runId: \"{os.environ['RUN_ID']}\"
+  runUrl: {os.environ['RUN_URL']}
   outputs:
-    foundryName: ${{ needs.provision.outputs.foundry_name }}
-    foundryProjectName: ${{ needs.provision.outputs.foundry_project_name }}
-    webAppName: ${{ needs.provision.outputs.webapp_name }}
-    webAppUrl: ${{ needs.provision.outputs.webapp_url }}
-EOF
+    foundryName: {os.environ['FOUNDRY_NAME']}
+    foundryProjectName: {os.environ['FOUNDRY_PROJECT_NAME']}
+    webAppName: {os.environ['WEBAPP_NAME']}
+    webAppUrl: {os.environ['WEBAPP_URL']}
+"""
+
+          with open(os.environ["STATUS_FILE"], "w", encoding="utf-8") as f:
+            f.write(content)
+          PY
 
       - name: Commit status update
         shell: bash
