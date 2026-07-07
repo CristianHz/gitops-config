@@ -288,7 +288,13 @@ jobs:
           azd env set AZURE_LOCATION "${{ needs.resolve-request.outputs.location }}"
           azd env set AZURE_RESOURCE_GROUP "${{ needs.resolve-request.outputs.resource_group_name }}"
 
-          azd provision --no-prompt \
+          az group create \
+            --name "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --location "${{ needs.resolve-request.outputs.location }}"
+
+          az deployment group create \
+            --resource-group "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --template-file "./infra-as-code/bicep/main.bicep" \
             --parameters baseName="${{ needs.resolve-request.outputs.base_name }}" \
             --parameters yourPrincipalId="${{ needs.resolve-request.outputs.your_principal_id }}" \
             --parameters telemetryOptOut="${{ needs.resolve-request.outputs.telemetry_opt_out }}"
