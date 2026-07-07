@@ -46,25 +46,26 @@ jobs:
         id: resolve
         shell: bash
         run: |
+          REQUEST_PATTERN='^platform/requests/foundry/[a-z0-9-]+-(dev|staging|prod)\.yaml$'
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             FILE="${{ github.event.inputs.request_file }}"
 
-            # If a manual run provides an example file (or empty input), fallback to a real request file.
-            if [ -z "$FILE" ] || echo "$FILE" | grep -q '\.example\.yaml$'; then
+            # If manual input is empty or not a valid request manifest, fallback to first valid request file.
+            if [ -z "$FILE" ] || ! echo "$FILE" | grep -Eq "$REQUEST_PATTERN"; then
               FILE=$(git ls-files 'platform/requests/foundry/*.yaml' \
-                | grep -v '\.example\.yaml$' \
+                | grep -E "$REQUEST_PATTERN" \
                 | head -n 1 || true)
             fi
           else
             FILE=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
-              | grep '^platform/requests/foundry/.*\.yaml$' \
-              | grep -v '\.example\.yaml$' \
+              | grep -E "$REQUEST_PATTERN" \
               | head -n 1 || true)
 
             # Fallback for reruns/manual cases where the current push did not modify request files.
             if [ -z "$FILE" ]; then
               FILE=$(git ls-files 'platform/requests/foundry/*.yaml' \
-                | grep -v '\.example\.yaml$' \
+                | grep -E "$REQUEST_PATTERN" \
                 | head -n 1 || true)
             fi
           fi
@@ -79,8 +80,8 @@ jobs:
             exit 1
           fi
 
-          if echo "$FILE" | grep -q '\.example\.yaml$'; then
-            echo "Example file cannot be provisioned: $FILE"
+          if ! echo "$FILE" | grep -Eq "$REQUEST_PATTERN"; then
+            echo "Invalid request file path: $FILE"
             exit 1
           fi
 
