@@ -11,7 +11,7 @@ on:
       request_file:
         description: "Path to request file in gitops-config"
         required: true
-        default: "platform/requests/foundry/team-research-dev.example.yaml"
+        default: "platform/requests/foundry/team-research-dev.yaml"
 
 env:
   APP_STACKS_REPO: CristianHz/app-stacks
@@ -40,7 +40,7 @@ jobs:
       telemetry_opt_out: ${{ steps.parse.outputs.telemetry_opt_out }}
     steps:
       - name: Checkout gitops-config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve request file
         id: resolve
@@ -52,7 +52,14 @@ jobs:
             FILE=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
               | grep '^platform/requests/foundry/.*\.yaml$' \
               | grep -v '\.example\.yaml$' \
-              | head -n 1)
+              | head -n 1 || true)
+
+            # Fallback for reruns/manual cases where the current push did not modify request files.
+            if [ -z "$FILE" ]; then
+              FILE=$(git ls-files 'platform/requests/foundry/*.yaml' \
+                | grep -v '\.example\.yaml$' \
+                | head -n 1 || true)
+            fi
           fi
 
           if [ -z "$FILE" ]; then
@@ -238,10 +245,10 @@ jobs:
       webapp_url: ${{ steps.capture.outputs.webapp_url }}
     steps:
       - name: Checkout gitops-config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout app-stacks
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ needs.resolve-request.outputs.template_repo }}
           ref: ${{ needs.resolve-request.outputs.template_version }}
@@ -305,7 +312,7 @@ jobs:
     if: always() && needs.resolve-request.result == 'success'
     steps:
       - name: Checkout gitops-config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Write status file
         shell: bash
