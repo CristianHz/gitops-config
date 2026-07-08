@@ -6,7 +6,7 @@ spec:
   template:
     repo: CristianHz/app-stacks
     path: templates/azure/foundry-basic
-    version: v1.0.0
+    version: v1.0.3
   azure:
     subscriptionId: 00000000-0000-0000-0000-000000000000
     location: eastus2
