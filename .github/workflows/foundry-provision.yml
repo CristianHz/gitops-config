@@ -302,6 +302,23 @@ jobs:
             --parameters yourPrincipalId="${{ needs.resolve-request.outputs.your_principal_id }}" \
             --parameters telemetryOptOut="${{ needs.resolve-request.outputs.telemetry_opt_out }}"
 
+      - name: Deploy ChatUI package to App Service
+        shell: bash
+        run: |
+          ZIP_PATH="app-stacks/${{ needs.resolve-request.outputs.template_path }}/website/chatui.zip"
+          WEBAPP_NAME="app-${{ needs.resolve-request.outputs.base_name }}"
+
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "ChatUI zip package not found: $ZIP_PATH"
+            exit 1
+          fi
+
+          az webapp deploy \
+            --resource-group "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --name "$WEBAPP_NAME" \
+            --type zip \
+            --src-path "$ZIP_PATH"
+
       - name: Capture deployment outputs
         id: capture
         shell: bash
