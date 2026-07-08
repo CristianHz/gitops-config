@@ -18,12 +18,12 @@ spec:
     baseName: cris02
     telemetryOptOut: false
 status:
-  state: success
-  updatedAt: 2026-07-08T17:24:37Z
-  runId: "28961976228"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28961976228
+  state: failure
+  updatedAt: 2026-07-08T18:36:52Z
+  runId: "28966691795"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28966691795
   outputs:
-    foundryName: aifcris02
-    foundryProjectName: projchat
-    webAppName: app-cris02
-    webAppUrl: https://app-cris02-h3erepfmg3cqgucs.eastus2-01.azurewebsites.net
+    foundryName: 
+    foundryProjectName: 
+    webAppName: 
+    webAppUrl: 
