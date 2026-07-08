@@ -525,29 +525,26 @@ jobs:
             exit 0
           fi
 
-          if [ "$RESULT" = "success" ]; then
-            ICON="✅"
-            APP_URL_LINE="- App URL: ${WEBAPP_URL}"
-          else
-            ICON="❌"
-            APP_URL_LINE="- App URL: not available"
-          fi
-
-          TEXT=$(cat <<EOF
-${ICON} Foundry deployment ${RESULT}
-
-- Request: ${REQUEST_NAME}
-- Team: ${TEAM}
-- Environment: ${ENVIRONMENT}
-${APP_URL_LINE}
-- Run: ${RUN_URL}
-EOF
-)
-
           PAYLOAD=$(python - <<'PY'
 import json
 import os
-print(json.dumps({"text": os.environ["TEXT"]}))
+
+result = os.environ.get("RESULT", "unknown")
+icon = "✅" if result == "success" else "❌"
+webapp_url = os.environ.get("WEBAPP_URL", "")
+app_url_value = webapp_url if (result == "success" and webapp_url) else "not available"
+
+text = "\n".join([
+    f"{icon} Foundry deployment {result}",
+    "",
+    f"- Request: {os.environ.get('REQUEST_NAME', '')}",
+    f"- Team: {os.environ.get('TEAM', '')}",
+    f"- Environment: {os.environ.get('ENVIRONMENT', '')}",
+    f"- App URL: {app_url_value}",
+    f"- Run: {os.environ.get('RUN_URL', '')}",
+])
+
+print(json.dumps({"text": text}))
 PY
 )
 
