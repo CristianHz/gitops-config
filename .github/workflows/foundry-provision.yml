@@ -248,6 +248,9 @@ jobs:
   provision:
     runs-on: ubuntu-latest
     needs: resolve-request
+    environment:
+      name: ${{ needs.resolve-request.outputs.environment }}
+      url: ${{ steps.capture.outputs.webapp_url }}
     outputs:
       foundry_name: ${{ steps.capture.outputs.foundry_name }}
       foundry_project_name: ${{ steps.capture.outputs.foundry_project_name }}
@@ -336,6 +339,20 @@ jobs:
           echo "foundry_project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
           echo "webapp_name=$WEBAPP_NAME" >> "$GITHUB_OUTPUT"
           echo "webapp_url=https://$HOSTNAME" >> "$GITHUB_OUTPUT"
+
+      - name: Publish deployment summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## Foundry deployment completed"
+            echo ""
+            echo "- Environment: ${{ needs.resolve-request.outputs.environment }}"
+            echo "- Request: ${{ needs.resolve-request.outputs.request_name }}"
+            echo "- Resource Group: ${{ needs.resolve-request.outputs.resource_group_name }}"
+            echo "- Web App: ${{ steps.capture.outputs.webapp_name }}"
+            echo "- Web App URL: [${{ steps.capture.outputs.webapp_url }}](${{ steps.capture.outputs.webapp_url }})"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   write-status:
     runs-on: ubuntu-latest
