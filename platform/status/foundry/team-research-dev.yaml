@@ -13,17 +13,17 @@ spec:
   azure:
     subscriptionId: 5a6786f1-b079-405d-b9cf-18cf898c60cb
     location: eastus2
-    resourceGroupName: rg-chat-basic-cris01
+    resourceGroupName: rg-chat-basic-cris02
   parameters:
-    baseName: cris01
+    baseName: cris02
     telemetryOptOut: false
 status:
-  state: failure
-  updatedAt: 2026-07-08T15:49:11Z
-  runId: "28956063041"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28956063041
+  state: success
+  updatedAt: 2026-07-08T15:54:51Z
+  runId: "28956297237"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28956297237
   outputs:
-    foundryName: 
-    foundryProjectName: 
-    webAppName: 
-    webAppUrl: 
+    foundryName: aifcris02
+    foundryProjectName: projchat
+    webAppName: app-cris02
+    webAppUrl: https://app-cris02-h3erepfmg3cqgucs.eastus2-01.azurewebsites.net
