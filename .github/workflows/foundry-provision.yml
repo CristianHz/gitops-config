@@ -40,6 +40,7 @@ jobs:
       base_name: ${{ steps.parse.outputs.base_name }}
       your_principal_id: ${{ steps.parse.outputs.your_principal_id }}
       telemetry_opt_out: ${{ steps.parse.outputs.telemetry_opt_out }}
+      ui_template: ${{ steps.parse.outputs.ui_template }}
     steps:
       - name: Checkout gitops-config
         uses: actions/checkout@v5
@@ -138,6 +139,7 @@ jobs:
           base_name = params.get("baseName")
           your_principal_id = params.get("yourPrincipalId")
           telemetry_opt_out = params.get("telemetryOptOut", False)
+          ui_template = params.get("uiTemplate", "chatui")
           team = ownership.get("team")
           requestor = ownership.get("requestor")
           approver = ownership.get("approver")
@@ -185,6 +187,9 @@ jobs:
 
           if not re.fullmatch(r"v\d+\.\d+\.\d+([-.][A-Za-z0-9.]+)?", str(template_version)):
             raise SystemExit("spec.template.version must be a version tag like v1.0.0")
+
+          if ui_template not in {"chatui", "react-skeleton"}:
+            raise SystemExit("spec.params.uiTemplate must be one of: chatui, react-skeleton")
 
           allowed_template_repo = policy.get("allowedTemplateRepo", "CristianHz/app-stacks")
           allowed_template_path = policy.get("allowedTemplatePath", "templates/azure/foundry-basic")
@@ -236,6 +241,7 @@ jobs:
             "base_name": base_name,
             "your_principal_id": your_principal_id,
             "telemetry_opt_out": str(telemetry_opt_out).lower(),
+            "ui_template": ui_template,
           }
 
           with open(output_path, "a", encoding="utf-8") as f:
@@ -277,6 +283,14 @@ jobs:
       - name: Install azd
         uses: Azure/setup-azd@v2
 
+      - name: Setup Node for react-skeleton build
+        if: needs.resolve-request.outputs.ui_template == 'react-skeleton'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app-stacks/templates/react-skeleton/package-lock.json
+
       - name: Provision with azd
         shell: bash
         run: |
@@ -305,7 +319,46 @@ jobs:
             --parameters yourPrincipalId="${{ needs.resolve-request.outputs.your_principal_id }}" \
             --parameters telemetryOptOut="${{ needs.resolve-request.outputs.telemetry_opt_out }}"
 
+      - name: Build react-skeleton package
+        if: needs.resolve-request.outputs.ui_template == 'react-skeleton'
+        shell: bash
+        run: |
+          cd app-stacks/templates/react-skeleton
+          npm ci
+          npm run build
+
+      - name: Configure App Service for static React hosting
+        if: needs.resolve-request.outputs.ui_template == 'react-skeleton'
+        shell: bash
+        run: |
+          WEBAPP_NAME="app-${{ needs.resolve-request.outputs.base_name }}"
+
+          az webapp config set \
+            --resource-group "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --name "$WEBAPP_NAME" \
+            --linux-fx-version "NODE|22-lts" \
+            --startup-file "pm2 serve /home/site/wwwroot --no-daemon --spa"
+
+      - name: Deploy react-skeleton build to App Service
+        if: needs.resolve-request.outputs.ui_template == 'react-skeleton'
+        shell: bash
+        run: |
+          BUILD_PATH="app-stacks/templates/react-skeleton/build"
+          WEBAPP_NAME="app-${{ needs.resolve-request.outputs.base_name }}"
+
+          if [ ! -d "$BUILD_PATH" ]; then
+            echo "React build output not found: $BUILD_PATH"
+            exit 1
+          fi
+
+          az webapp deploy \
+            --resource-group "${{ needs.resolve-request.outputs.resource_group_name }}" \
+            --name "$WEBAPP_NAME" \
+            --type static \
+            --src-path "$BUILD_PATH"
+
       - name: Deploy ChatUI package to App Service
+        if: needs.resolve-request.outputs.ui_template != 'react-skeleton'
         shell: bash
         run: |
           ZIP_PATH="app-stacks/${{ needs.resolve-request.outputs.template_path }}/website/chatui.zip"
@@ -349,6 +402,7 @@ jobs:
             echo ""
             echo "- Environment: ${{ needs.resolve-request.outputs.environment }}"
             echo "- Request: ${{ needs.resolve-request.outputs.request_name }}"
+            echo "- UI Template: ${{ needs.resolve-request.outputs.ui_template }}"
             echo "- Resource Group: ${{ needs.resolve-request.outputs.resource_group_name }}"
             echo "- Web App: ${{ steps.capture.outputs.webapp_name }}"
             echo "- Web App URL: [${{ steps.capture.outputs.webapp_url }}](${{ steps.capture.outputs.webapp_url }})"

@@ -15,6 +15,7 @@ spec:
     baseName: cris02
     yourPrincipalId: d599d8ab-ea9c-4efd-9d90-7174e20f3af8
     telemetryOptOut: false
+    uiTemplate: react-skeleton
   ownership:
     team: team-research
     requestor: cristian.hernandez@possumus.tech
