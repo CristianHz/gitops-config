@@ -19,9 +19,9 @@ spec:
     telemetryOptOut: false
 status:
   state: success
-  updatedAt: 2026-07-08T15:54:51Z
-  runId: "28956297237"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28956297237
+  updatedAt: 2026-07-08T17:24:37Z
+  runId: "28961976228"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28961976228
   outputs:
     foundryName: aifcris02
     foundryProjectName: projchat
