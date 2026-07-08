@@ -9,7 +9,7 @@ spec:
   template:
     repo: CristianHz/app-stacks
     path: templates/azure/foundry-basic
-    version: v1.0.2
+    version: v1.0.3
   azure:
     subscriptionId: 5a6786f1-b079-405d-b9cf-18cf898c60cb
     location: eastus2
@@ -19,9 +19,9 @@ spec:
     telemetryOptOut: false
 status:
   state: failure
-  updatedAt: 2026-07-08T15:45:44Z
-  runId: "28955845388"
-  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28955845388
+  updatedAt: 2026-07-08T15:49:11Z
+  runId: "28956063041"
+  runUrl: https://github.com/CristianHz/gitops-config/actions/runs/28956063041
   outputs:
     foundryName: 
     foundryProjectName: 
