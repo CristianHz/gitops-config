@@ -446,3 +446,57 @@ jobs:
           fi
           git commit -m "chore: update foundry status for ${{ needs.resolve-request.outputs.request_name }}"
           git push origin main
+
+  notify-teams:
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-request
+      - provision
+      - write-status
+    if: always() && needs.resolve-request.result == 'success'
+    steps:
+      - name: Send Teams notification (optional)
+        shell: bash
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          RESULT: ${{ needs.provision.result }}
+          REQUEST_NAME: ${{ needs.resolve-request.outputs.request_name }}
+          ENVIRONMENT: ${{ needs.resolve-request.outputs.environment }}
+          TEAM: ${{ needs.resolve-request.outputs.team }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WEBAPP_URL: ${{ needs.provision.outputs.webapp_url }}
+        run: |
+          if [ -z "$TEAMS_WEBHOOK_URL" ]; then
+            echo "TEAMS_WEBHOOK_URL not configured. Skipping Teams notification."
+            exit 0
+          fi
+
+          if [ "$RESULT" = "success" ]; then
+            ICON="✅"
+            APP_URL_LINE="- App URL: ${WEBAPP_URL}"
+          else
+            ICON="❌"
+            APP_URL_LINE="- App URL: not available"
+          fi
+
+          TEXT=$(cat <<EOF
+${ICON} Foundry deployment ${RESULT}
+
+- Request: ${REQUEST_NAME}
+- Team: ${TEAM}
+- Environment: ${ENVIRONMENT}
+${APP_URL_LINE}
+- Run: ${RUN_URL}
+EOF
+)
+
+          PAYLOAD=$(python - <<'PY'
+import json
+import os
+print(json.dumps({"text": os.environ["TEXT"]}))
+PY
+)
+
+          curl -sS -X POST "$TEAMS_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
