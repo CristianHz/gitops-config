@@ -65,7 +65,7 @@ metadata:
 spec:
   template:
     repo: CristianHz/app-stacks
-    path: templates/microsoft-foundry-basic
+    path: templates/azure/foundry-basic
     version: v1.0.0
   azure:
     subscriptionId: 00000000-0000-0000-0000-000000000000

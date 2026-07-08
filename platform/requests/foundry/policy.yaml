@@ -2,7 +2,7 @@ apiVersion: platform/v1
 kind: FoundryRequestPolicy
 spec:
   allowedTemplateRepo: CristianHz/app-stacks
-  allowedTemplatePath: templates/microsoft-foundry-basic
+  allowedTemplatePath: templates/azure/foundry-basic
   allowedTeams:
     - team-research
   allowedEnvironments:

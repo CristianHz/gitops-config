@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "platform/requests/foundry/*.yaml"
+      - "platform/requests/foundry/*-dev.yaml"
+      - "platform/requests/foundry/*-staging.yaml"
+      - "platform/requests/foundry/*-prod.yaml"
   workflow_dispatch:
     inputs:
       request_file:
@@ -185,7 +187,7 @@ jobs:
             raise SystemExit("spec.template.version must be a version tag like v1.0.0")
 
           allowed_template_repo = policy.get("allowedTemplateRepo", "CristianHz/app-stacks")
-          allowed_template_path = policy.get("allowedTemplatePath", "templates/microsoft-foundry-basic")
+          allowed_template_path = policy.get("allowedTemplatePath", "templates/azure/foundry-basic")
           allowed_teams = set(policy.get("allowedTeams", ["team-research"]))
           allowed_envs = set(policy.get("allowedEnvironments", ["dev", "staging"]))
           allowed_locations = set(policy.get("allowedLocations", ["eastus2"]))
